@@ -114,6 +114,12 @@ impl ::std::default::Default for color {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+pub struct Point {
+    pub x: i32,
+    pub y: i32,
+}
+
 ///
 /// If no processing required, skip update processing
 ///  No processing means:

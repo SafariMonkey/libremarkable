@@ -133,6 +133,129 @@ impl<'a> framebuffer::FramebufferDraw for core::Framebuffer<'a> {
         }
     }
 
+    fn draw_polygon(&mut self, points: Vec<Point>, fill: bool, c: color) -> mxcfb_rect {
+        // This implementation of polygon rasterisation is based on this article:
+        // https://hackernoon.com/computer-graphics-scan-line-polygon-fill-algorithm-3cb47283df6
+
+        // struct to hold edge data
+        #[derive(Debug, Copy, Clone)]
+        struct EdgeBucket {
+            ymax: i32,
+            ymin: i32,
+            x: i32,
+            sign: i32,
+            dx: i32,
+            dy: i32,
+            sum: i32,
+        };
+
+        // initialise our edge table
+        let mut edge_table = Vec::new();
+        let num_edges = points.len();
+        for i in 0..num_edges {
+            let p0 = points[i];
+            let p1 = points[(i + 1) % num_edges];
+            let (lower, higher) = if p0.y < p1.y { (p0, p1) } else { (p1, p0) };
+            edge_table.push(EdgeBucket {
+                ymax: higher.y,
+                ymin: lower.y,
+                x: lower.x,
+                sign: if lower.x > higher.x { 1 } else { -1 },
+                dx: (higher.x - lower.x).abs(),
+                dy: (higher.y - lower.y).abs(),
+                sum: 0,
+            });
+        }
+        // sort the edge table by ymin
+        edge_table.sort_unstable_by_key(|p| p.ymin);
+
+        // create active list
+        let mut active_list = Vec::<EdgeBucket>::new();
+
+        // initialise scanline with lowest ymin
+        let mut scanline = edge_table[0].clone().ymin;
+
+        while edge_table.len() > 0 {
+            // remove edges that end on the current scanline
+            edge_table.retain(|edge| if edge.ymax == scanline { false } else { true });
+            active_list.retain(|edge| if edge.ymax == scanline { false } else { true });
+
+            // push edges that start on this scanline to the active list
+            for edge in edge_table.iter() {
+                if edge.ymin == scanline {
+                    active_list.push(edge.clone());
+                }
+            }
+
+            // sort active list by ymin, ascending
+            active_list.sort_unstable_by_key(|p| p.x);
+
+            // for every pair of edges on the active list,
+            // apply the fill method selected
+            for pair in active_list.chunks(2) {
+                if pair.len() != 2 {
+                    continue;
+                }
+                if fill {
+                    for x in pair[0].x..pair[1].x {
+                        self.write_pixel(scanline as usize, x as usize, c);
+                    }
+                } else {
+                    if pair[0].x != pair[1].x {
+                        self.write_pixel(scanline as usize, pair[0].x as usize, c);
+                        self.write_pixel(scanline as usize, pair[1].x as usize - 1, c);
+                    }
+                }
+            }
+
+            // increment scanline
+            scanline += 1;
+
+            // adjust the x of each edge based on its gradient
+            for edge in &mut active_list {
+                if edge.dx != 0 {
+                    edge.sum += edge.dx;
+                }
+                while edge.sum >= edge.dy {
+                    edge.x -= edge.sign;
+                    edge.sum -= edge.dy;
+                }
+            }
+        }
+
+        // calculate bounding box
+        let (min_xy, max_xy) = points.iter().fold(
+            (
+                Point {
+                    y: std::i32::MAX,
+                    x: std::i32::MAX,
+                },
+                Point {
+                    y: std::i32::MIN,
+                    x: std::i32::MIN,
+                },
+            ),
+            |acc, p| {
+                (
+                    Point {
+                        y: min!(acc.0.y, p.y),
+                        x: min!(acc.0.x, p.x),
+                    },
+                    Point {
+                        y: max!(acc.1.y, p.y),
+                        x: max!(acc.1.x, p.x),
+                    },
+                )
+            },
+        );
+        mxcfb_rect {
+            top: min_xy.y as u32,
+            left: min_xy.x as u32,
+            width: (max_xy.x - min_xy.x) as u32,
+            height: (max_xy.y - min_xy.y) as u32,
+        }
+    }
+
     fn draw_circle(&mut self, y: usize, x: usize, rad: usize, v: color) -> mxcfb_rect {
         for (x, y) in line_drawing::BresenhamCircle::new(x as i32, y as i32, rad as i32) {
             self.write_pixel(y as usize, x as usize, v);

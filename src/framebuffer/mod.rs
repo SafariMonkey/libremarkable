@@ -58,6 +58,13 @@ pub trait FramebufferDraw {
         rad: usize,
         c: common::color,
     ) -> common::mxcfb_rect;
+    /// Draws a polygon
+    fn draw_polygon(
+        &mut self,
+        Vec<common::Point>,
+        fill: bool,
+        c: common::color,
+    ) -> common::mxcfb_rect;
     /// Draws a bezier curve begining at `startpt`, with control point `ctrlpt`, ending at `endpt` with `color`
     fn draw_bezier(
         &mut self,
