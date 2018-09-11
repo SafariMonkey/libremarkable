@@ -65,13 +65,17 @@ enum TouchMode {
     OnlyUI,
     Bezier,
     Circles,
+    Diamonds,
+    FillDiamonds,
 }
 impl TouchMode {
     fn toggle(self) -> Self {
         match self {
             TouchMode::OnlyUI => TouchMode::Bezier,
             TouchMode::Bezier => TouchMode::Circles,
-            TouchMode::Circles => TouchMode::OnlyUI,
+            TouchMode::Circles => TouchMode::Diamonds,
+            TouchMode::Diamonds => TouchMode::FillDiamonds,
+            TouchMode::FillDiamonds => TouchMode::OnlyUI,
         }
     }
     fn to_string(self) -> String {
@@ -79,6 +83,8 @@ impl TouchMode {
             TouchMode::OnlyUI => "None",
             TouchMode::Bezier => "Bezier",
             TouchMode::Circles => "Circles",
+            TouchMode::Diamonds => "Diamonds",
+            TouchMode::FillDiamonds => "⬛Diamonds",
         }.into()
     }
 }
@@ -512,6 +518,32 @@ fn on_touch_handler(app: &mut appctx::ApplicationContext, input: multitouch::Mul
                 TouchMode::Circles => {
                     framebuffer.draw_circle(y as usize, x as usize, 20, color::BLACK)
                 }
+                m @ TouchMode::Diamonds | m @ TouchMode::FillDiamonds => framebuffer.draw_polygon(
+                    vec![
+                        Point {
+                            x: x as i32 - 10,
+                            y: y as i32,
+                        },
+                        Point {
+                            x: x as i32,
+                            y: y as i32 + 20,
+                        },
+                        Point {
+                            x: x as i32 + 10,
+                            y: y as i32,
+                        },
+                        Point {
+                            x: x as i32,
+                            y: y as i32 - 20,
+                        },
+                    ],
+                    match m {
+                        TouchMode::Diamonds => false,
+                        TouchMode::FillDiamonds => true,
+                        _ => false,
+                    },
+                    color::BLACK,
+                ),
                 _ => return,
             };
             framebuffer.partial_refresh(
