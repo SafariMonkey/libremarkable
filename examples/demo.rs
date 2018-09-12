@@ -11,6 +11,7 @@ extern crate libremarkable;
 use libremarkable::framebuffer::common::*;
 use libremarkable::framebuffer::refresh::PartialRefreshMode;
 use libremarkable::framebuffer::storage;
+use libremarkable::framebuffer::vector::*;
 use libremarkable::framebuffer::{FramebufferDraw, FramebufferIO, FramebufferRefresh};
 use libremarkable::image::GenericImage;
 use libremarkable::input::{gpio, multitouch, wacom, InputDevice};
@@ -442,14 +443,6 @@ fn on_wacom_input(app: &mut appctx::ApplicationContext, input: wacom::WacomEvent
                 let framebuffer = app.get_framebuffer_ref();
                 let rect = if use_poly {
                     let prev = wacom_stack.pop().unwrap();
-                    // framebuffer.draw_line(
-                    //     y as i32,
-                    //     x as i32,
-                    //     prev.0,
-                    //     prev.1,
-                    //     rad.ceil() as usize,
-                    //     col,
-                    // )
                     let old_rad = (mult as f32 * (prev.2 as f32) / 2048.) / 2.0;
                     // calculate normal
                     let dx = x as i32 - prev.1;
@@ -457,37 +450,69 @@ fn on_wacom_input(app: &mut appctx::ApplicationContext, input: wacom::WacomEvent
                     let length = ((dx * dx + dy * dy) as f32).sqrt();
                     let norm_x = dx as f32 / length;
                     let norm_y = dy as f32 / length;
-                    framebuffer.draw_polygon(
+                    framebuffer
+                        .draw_polygon(
                             vec![
-                                Point {
+                                IntVec2 {
                                     x: prev.1 + (norm_y * old_rad) as i32,
                                     y: prev.0 - (norm_x * old_rad) as i32,
                                 },
-                                Point {
+                                IntVec2 {
                                     x: prev.1 - (norm_y * old_rad) as i32,
                                     y: prev.0 + (norm_x * old_rad) as i32,
                                 },
-                                Point {
+                                IntVec2 {
                                     x: x as i32 - (norm_y * rad) as i32,
                                     y: y as i32 + (norm_x * rad) as i32,
                                 },
-                                Point {
+                                IntVec2 {
                                     x: x as i32 + (norm_y * rad) as i32,
                                     y: y as i32 - (norm_x * rad) as i32,
                                 },
                             ],
                             true,
                             col,
+                        ).merge(
+                            &framebuffer
+                                .draw_circle(
+                                    prev.0 as usize,
+                                    prev.1 as usize,
+                                    old_rad as usize,
+                                    col,
+                                ).merge(&framebuffer.draw_circle(
+                                    y as usize,
+                                    x as usize,
+                                    rad as usize,
+                                    col,
+                                )),
                         )
                 } else {
-                let controlpt = wacom_stack.pop().unwrap();
-                let beginpt = wacom_stack.pop().unwrap();
-                    framebuffer.draw_bezier(
-                    (beginpt.1 as f32, beginpt.0 as f32),
-                    (controlpt.1 as f32, controlpt.0 as f32),
-                    (x as f32, y as f32),
-                    rad as usize,
-                    col,
+                    let controlpt = wacom_stack.pop().unwrap();
+                    let beginpt = wacom_stack.pop().unwrap();
+                    framebuffer.draw_dynamic_bezier(
+                        (
+                            Vec2 {
+                                x: beginpt.1 as f32,
+                                y: beginpt.0 as f32,
+                            },
+                            (rad * 2.0),
+                        ),
+                        (
+                            Vec2 {
+                                x: controlpt.1 as f32,
+                                y: controlpt.0 as f32,
+                            },
+                            (rad * 2.0),
+                        ),
+                        (
+                            Vec2 {
+                                x: x as f32,
+                                y: y as f32,
+                            },
+                            (rad * 2.0),
+                        ),
+                        1000,
+                        col,
                     )
                 };
 
@@ -558,10 +583,20 @@ fn on_touch_handler(app: &mut appctx::ApplicationContext, input: multitouch::Mul
             }
             let rect = match G_TOUCH_MODE.load(Ordering::Relaxed) {
                 TouchMode::Bezier => framebuffer.draw_bezier(
-                    (x as f32, y as f32),
-                    ((x + 155) as f32, (y + 14) as f32),
-                    ((x + 200) as f32, (y + 200) as f32),
-                    2,
+                    Vec2 {
+                        x: x as f32,
+                        y: y as f32,
+                    },
+                    Vec2 {
+                        x: (x + 155) as f32,
+                        y: (y + 14) as f32,
+                    },
+                    Vec2 {
+                        x: (x + 200) as f32,
+                        y: (y + 200) as f32,
+                    },
+                    2.0,
+                    1000,
                     color::BLACK,
                 ),
                 TouchMode::Circles => {
@@ -569,19 +604,19 @@ fn on_touch_handler(app: &mut appctx::ApplicationContext, input: multitouch::Mul
                 }
                 m @ TouchMode::Diamonds | m @ TouchMode::FillDiamonds => framebuffer.draw_polygon(
                     vec![
-                        Point {
+                        IntVec2 {
                             x: x as i32 - 10,
                             y: y as i32,
                         },
-                        Point {
+                        IntVec2 {
                             x: x as i32,
                             y: y as i32 + 20,
                         },
-                        Point {
+                        IntVec2 {
                             x: x as i32 + 10,
                             y: y as i32,
                         },
-                        Point {
+                        IntVec2 {
                             x: x as i32,
                             y: y as i32 - 20,
                         },

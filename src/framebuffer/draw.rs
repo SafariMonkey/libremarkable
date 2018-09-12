@@ -8,6 +8,7 @@ use rusttype::{point, Scale};
 use framebuffer;
 use framebuffer::common::*;
 use framebuffer::core;
+use framebuffer::vector::*;
 use framebuffer::FramebufferIO;
 
 macro_rules! min {
@@ -21,23 +22,23 @@ macro_rules! max {
 }
 
 /// Helper function to sample pixels on the bezier curve.
-fn sample_bezier(startpt: (f32, f32), ctrlpt: (f32, f32), endpt: (f32, f32)) -> Vec<(f32, f32)> {
+fn sample_bezier(startpt: Vec2, ctrlpt: Vec2, endpt: Vec2, samples: i32) -> Vec<(f32, Vec2)> {
     let mut points = Vec::new();
     let mut lastpt = (-100, -100);
-    for i in 0..1000 {
-        let t = (i as f32) / 1000.0;
-        let precisept = (
-            (1.0 - t).powf(2.0) * startpt.0
-                + 2.0 * (1.0 - t) * t * ctrlpt.0
-                + t.powf(2.0) * endpt.0,
-            (1.0 - t).powf(2.0) * startpt.1
-                + 2.0 * (1.0 - t) * t * ctrlpt.1
-                + t.powf(2.0) * endpt.1,
-        );
-        let pt = (precisept.0 as i32, precisept.1 as i32);
+    for i in 0..samples {
+        let t = (i as f32) / samples as f32;
+        let precisept = Vec2 {
+            x: (1.0 - t).powf(2.0) * startpt.x
+                + 2.0 * (1.0 - t) * t * ctrlpt.x
+                + t.powf(2.0) * endpt.x,
+            y: (1.0 - t).powf(2.0) * startpt.y
+                + 2.0 * (1.0 - t) * t * ctrlpt.y
+                + t.powf(2.0) * endpt.y,
+        };
+        let pt = (precisept.x as i32, precisept.y as i32);
         // prevent oversampling
         if pt != lastpt {
-            points.push(precisept);
+            points.push((t, precisept));
             lastpt = pt;
         }
     }
@@ -133,7 +134,7 @@ impl<'a> framebuffer::FramebufferDraw for core::Framebuffer<'a> {
         }
     }
 
-    fn draw_polygon(&mut self, points: Vec<Point>, fill: bool, c: color) -> mxcfb_rect {
+    fn draw_polygon(&mut self, points: Vec<IntVec2>, fill: bool, c: color) -> mxcfb_rect {
         // This implementation of polygon rasterisation is based on this article:
         // https://hackernoon.com/computer-graphics-scan-line-polygon-fill-algorithm-3cb47283df6
 
@@ -226,22 +227,22 @@ impl<'a> framebuffer::FramebufferDraw for core::Framebuffer<'a> {
         // calculate bounding box
         let (min_xy, max_xy) = points.iter().fold(
             (
-                Point {
+                IntVec2 {
                     y: std::i32::MAX,
                     x: std::i32::MAX,
                 },
-                Point {
+                IntVec2 {
                     y: std::i32::MIN,
                     x: std::i32::MIN,
                 },
             ),
             |acc, p| {
                 (
-                    Point {
+                    IntVec2 {
                         y: min!(acc.0.y, p.y),
                         x: min!(acc.0.x, p.x),
                     },
-                    Point {
+                    IntVec2 {
                         y: max!(acc.1.y, p.y),
                         x: max!(acc.1.x, p.x),
                     },
@@ -284,40 +285,61 @@ impl<'a> framebuffer::FramebufferDraw for core::Framebuffer<'a> {
 
     fn draw_bezier(
         &mut self,
-        startpt: (f32, f32),
-        ctrlpt: (f32, f32),
-        endpt: (f32, f32),
-        width: usize,
+        startpt: Vec2,
+        ctrlpt: Vec2,
+        endpt: Vec2,
+        width: f32,
+        samples: i32,
         v: color,
     ) -> mxcfb_rect {
-        let mut upperleft: (usize, usize) = (startpt.0 as usize, startpt.1 as usize);
-        let mut lowerright: (usize, usize) = (endpt.0 as usize, endpt.1 as usize);
-        for pt in sample_bezier(startpt, ctrlpt, endpt) {
-            let approx = (pt.0 as usize, pt.1 as usize);
-            upperleft.1 = min!(upperleft.1, approx.1);
-            upperleft.0 = min!(upperleft.0, approx.0);
-            lowerright.1 = max!(lowerright.1, approx.1);
-            lowerright.0 = max!(lowerright.0, approx.0);
+        self.draw_dynamic_bezier(
+            (startpt, width),
+            (ctrlpt, width),
+            (endpt, width),
+            samples,
+            v,
+        )
+    }
 
-            // Set pixel
-            match width {
-                1 => self.write_pixel(approx.1, approx.0, v),
-                _ => self.fill_rect(
-                    (approx.1 - (width / 2)) as usize,
-                    (approx.0 - (width / 2)) as usize,
-                    width,
-                    width,
-                    v,
-                ),
+    fn draw_dynamic_bezier(
+        &mut self,
+        startpt: (Vec2, f32),
+        ctrlpt: (Vec2, f32),
+        endpt: (Vec2, f32),
+        samples: i32,
+        v: color,
+    ) -> mxcfb_rect {
+        let mut left_edge = Vec::<IntVec2>::new();
+        let mut right_edge = Vec::<IntVec2>::new();
+        for (t, pt) in sample_bezier(startpt.0, ctrlpt.0, endpt.0, samples) {
+            // interpolate width
+            let width = 2.0 * if t < 0.5 {
+                startpt.1 * t + ctrlpt.1 * (1.0 - t)
+            } else {
+                ctrlpt.1 * (t - 1.0) + endpt.1 * (2.0 - t)
             };
+
+            // calculate tangent
+            let velocity =
+                2.0 * (1.0 - t) * (ctrlpt.0 - startpt.0) + 2.0 * t * (endpt.0 - ctrlpt.0);
+            let tangent = velocity / velocity.length();
+
+            left_edge.push(IntVec2::from(
+                (pt + Vec2 {
+                    x: -tangent.y * width,
+                    y: tangent.x * width,
+                }).round(),
+            ));
+            right_edge.push(IntVec2::from(
+                (pt + Vec2 {
+                    x: tangent.y * width,
+                    y: -tangent.x * width,
+                }).round(),
+            ));
         }
-        let margin = ((width + 1) / 2) as usize;
-        mxcfb_rect {
-            top: (upperleft.1 - margin) as u32,
-            left: (upperleft.0 - margin) as u32,
-            width: (lowerright.0 - upperleft.0 + margin * 2) as u32,
-            height: (lowerright.1 - upperleft.1 + margin * 2) as u32,
-        }
+        right_edge.reverse();
+        left_edge.append(&mut right_edge);
+        self.draw_polygon(left_edge, true, v)
     }
 
     fn draw_text(

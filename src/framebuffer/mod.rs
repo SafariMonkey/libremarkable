@@ -28,6 +28,8 @@ pub trait FramebufferIO {
     ) -> Result<u32, &'static str>;
 }
 
+pub mod vector;
+
 pub mod draw;
 pub trait FramebufferDraw {
     /// Draws `img` at y=top, x=left coordinates with 1:1 scaling
@@ -61,17 +63,28 @@ pub trait FramebufferDraw {
     /// Draws a polygon
     fn draw_polygon(
         &mut self,
-        Vec<common::Point>,
+        Vec<vector::IntVec2>,
         fill: bool,
         c: common::color,
     ) -> common::mxcfb_rect;
     /// Draws a bezier curve begining at `startpt`, with control point `ctrlpt`, ending at `endpt` with `color`
     fn draw_bezier(
         &mut self,
-        startpt: (f32, f32),
-        ctrlpt: (f32, f32),
-        endpt: (f32, f32),
-        width: usize,
+        startpt: vector::Vec2,
+        ctrlpt: vector::Vec2,
+        endpt: vector::Vec2,
+        width: f32,
+        samples: i32,
+        v: common::color,
+    ) -> common::mxcfb_rect;
+    /// Draws a bezier curve begining at `startpt`, with control point `ctrlpt`, ending at `endpt`
+    /// with a width at each point and color `color`
+    fn draw_dynamic_bezier(
+        &mut self,
+        startpt: (vector::Vec2, f32),
+        ctrlpt: (vector::Vec2, f32),
+        endpt: (vector::Vec2, f32),
+        samples: i32,
         v: common::color,
     ) -> common::mxcfb_rect;
     /// Draws `text` at `(y, x)` with `color` using `scale`
