@@ -190,6 +190,21 @@ impl mxcfb_rect {
     }
 }
 
+impl mxcfb_rect {
+    pub fn merge(&self, rect: &mxcfb_rect) -> mxcfb_rect {
+        let top = std::cmp::min(self.top, rect.top);
+        let left = std::cmp::min(self.left, rect.left);
+        let bottom = std::cmp::max(self.top + self.height, rect.top + rect.height);
+        let right = std::cmp::max(self.left + self.width, rect.left + rect.width);
+        mxcfb_rect {
+            top: top,
+            left: left,
+            width: right - left,
+            height: bottom - top,
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum mxcfb_ioctl {
     MXCFB_NONE = 0x00,

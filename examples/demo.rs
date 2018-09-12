@@ -37,24 +37,28 @@ use std::time::Duration;
 #[derive(Copy, Clone, PartialEq)]
 enum DrawMode {
     Draw(usize),
+    PolyDraw(usize),
     Erase(usize),
 }
 impl DrawMode {
     fn set_size(self, new_size: usize) -> Self {
         match self {
             DrawMode::Draw(_) => DrawMode::Draw(new_size),
+            DrawMode::PolyDraw(_) => DrawMode::PolyDraw(new_size),
             DrawMode::Erase(_) => DrawMode::Erase(new_size),
         }
     }
     fn color_as_string(self) -> String {
         match self {
             DrawMode::Draw(_) => "Black",
+            DrawMode::PolyDraw(_) => "Black (New)",
             DrawMode::Erase(_) => "White",
         }.into()
     }
     fn get_size(self) -> usize {
         match self {
             DrawMode::Draw(s) => s,
+            DrawMode::PolyDraw(s) => s,
             DrawMode::Erase(s) => s,
         }
     }
@@ -104,7 +108,7 @@ lazy_static! {
     static ref G_DRAW_MODE: Atomic<DrawMode> = Atomic::new(DrawMode::Draw(2));
     static ref UNPRESS_OBSERVED: AtomicBool = AtomicBool::new(false);
     static ref WACOM_IN_RANGE: AtomicBool = AtomicBool::new(false);
-    static ref WACOM_HISTORY: Mutex<Vec<(i32, i32)>> = Mutex::new(Vec::new());
+    static ref WACOM_HISTORY: Mutex<Vec<(i32, i32, i32)>> = Mutex::new(Vec::new());
     static ref G_COUNTER: Mutex<u32> = Mutex::new(0);
     static ref LAST_REFRESHED_CANVAS_RECT: Atomic<mxcfb_rect> = Atomic::new(mxcfb_rect::invalid());
     static ref SAVED_CANVAS: Mutex<Option<storage::CompressedCanvasState>> = Mutex::new(None);
@@ -305,7 +309,8 @@ fn on_touch_rustlogo(app: &mut appctx::ApplicationContext, _element: UIElementHa
 fn on_toggle_eraser(app: &mut appctx::ApplicationContext, _: UIElementHandle) {
     let (new_mode, name) = match G_DRAW_MODE.load(Ordering::Relaxed) {
         DrawMode::Erase(s) => (DrawMode::Draw(s), "Black".to_owned()),
-        DrawMode::Draw(s) => (DrawMode::Erase(s), "White".to_owned()),
+        DrawMode::Draw(s) => (DrawMode::PolyDraw(s), "Black (New)".to_owned()),
+        DrawMode::PolyDraw(s) => (DrawMode::Erase(s), "White".to_owned()),
     };
     G_DRAW_MODE.store(new_mode, Ordering::Relaxed);
 
@@ -424,23 +429,67 @@ fn on_wacom_input(app: &mut appctx::ApplicationContext, input: wacom::WacomEvent
                 return;
             }
 
-            let (col, mult) = match G_DRAW_MODE.load(Ordering::Relaxed) {
-                DrawMode::Draw(s) => (color::BLACK, s),
-                DrawMode::Erase(s) => (color::WHITE, s * 3),
+            let (col, mult, use_poly) = match G_DRAW_MODE.load(Ordering::Relaxed) {
+                DrawMode::Draw(s) => (color::BLACK, s, false),
+                DrawMode::PolyDraw(s) => (color::BLACK, s, true),
+                DrawMode::Erase(s) => (color::WHITE, s * 3, false),
             };
 
-            let rad = mult as f32 * (pressure as f32) / 2048.;
-            if wacom_stack.len() >= 2 {
+            let rad = (mult as f32 * (pressure as f32) / 2048.) / 2.0;
+
+            let min_stack = if use_poly { 1 } else { 2 };
+            if wacom_stack.len() >= min_stack {
                 let framebuffer = app.get_framebuffer_ref();
+                let rect = if use_poly {
+                    let prev = wacom_stack.pop().unwrap();
+                    // framebuffer.draw_line(
+                    //     y as i32,
+                    //     x as i32,
+                    //     prev.0,
+                    //     prev.1,
+                    //     rad.ceil() as usize,
+                    //     col,
+                    // )
+                    let old_rad = (mult as f32 * (prev.2 as f32) / 2048.) / 2.0;
+                    // calculate normal
+                    let dx = x as i32 - prev.1;
+                    let dy = y as i32 - prev.0;
+                    let length = ((dx * dx + dy * dy) as f32).sqrt();
+                    let norm_x = dx as f32 / length;
+                    let norm_y = dy as f32 / length;
+                    framebuffer.draw_polygon(
+                            vec![
+                                Point {
+                                    x: prev.1 + (norm_y * old_rad) as i32,
+                                    y: prev.0 - (norm_x * old_rad) as i32,
+                                },
+                                Point {
+                                    x: prev.1 - (norm_y * old_rad) as i32,
+                                    y: prev.0 + (norm_x * old_rad) as i32,
+                                },
+                                Point {
+                                    x: x as i32 - (norm_y * rad) as i32,
+                                    y: y as i32 + (norm_x * rad) as i32,
+                                },
+                                Point {
+                                    x: x as i32 + (norm_y * rad) as i32,
+                                    y: y as i32 - (norm_x * rad) as i32,
+                                },
+                            ],
+                            true,
+                            col,
+                        )
+                } else {
                 let controlpt = wacom_stack.pop().unwrap();
                 let beginpt = wacom_stack.pop().unwrap();
-                let rect = framebuffer.draw_bezier(
+                    framebuffer.draw_bezier(
                     (beginpt.1 as f32, beginpt.0 as f32),
                     (controlpt.1 as f32, controlpt.0 as f32),
                     (x as f32, y as f32),
                     rad as usize,
                     col,
-                );
+                    )
+                };
 
                 if !LAST_REFRESHED_CANVAS_RECT
                     .load(Ordering::Relaxed)
@@ -458,7 +507,7 @@ fn on_wacom_input(app: &mut appctx::ApplicationContext, input: wacom::WacomEvent
                     LAST_REFRESHED_CANVAS_RECT.store(rect, Ordering::Relaxed);
                 }
             }
-            wacom_stack.push((y as i32, x as i32));
+            wacom_stack.push((y as i32, x as i32, pressure as i32));
         }
         wacom::WacomEvent::InstrumentChange { pen, state } => {
             match pen {
