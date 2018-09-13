@@ -15,6 +15,58 @@ impl std::convert::From<Vec2> for IntVec2 {
     }
 }
 
+impl std::ops::Add<IntVec2> for IntVec2 {
+    type Output = IntVec2;
+
+    fn add(self, other: IntVec2) -> IntVec2 {
+        IntVec2 {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        }
+    }
+}
+
+impl std::ops::Sub<IntVec2> for IntVec2 {
+    type Output = IntVec2;
+
+    fn sub(self, other: IntVec2) -> IntVec2 {
+        IntVec2 {
+            x: self.x - other.x,
+            y: self.y - other.y,
+        }
+    }
+}
+
+impl std::ops::Mul<i32> for IntVec2 {
+    type Output = IntVec2;
+
+    fn mul(self, scalar: i32) -> IntVec2 {
+        IntVec2 {
+            x: self.x * scalar,
+            y: self.y * scalar,
+        }
+    }
+}
+
+impl std::ops::Mul<IntVec2> for i32 {
+    type Output = IntVec2;
+
+    fn mul(self, vec: IntVec2) -> IntVec2 {
+        vec * self
+    }
+}
+
+impl std::ops::Div<i32> for IntVec2 {
+    type Output = IntVec2;
+
+    fn div(self, scalar: i32) -> IntVec2 {
+        IntVec2 {
+            x: self.x / scalar,
+            y: self.y / scalar,
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub struct Vec2 {
     pub x: f32,
@@ -30,6 +82,15 @@ impl Vec2 {
     }
     pub fn length(self) -> f32 {
         (self.x * self.x + self.y * self.y).sqrt()
+    }
+}
+
+impl std::convert::From<IntVec2> for Vec2 {
+    fn from(vec: IntVec2) -> Vec2 {
+        Vec2 {
+            x: vec.x as f32,
+            y: vec.y as f32,
+        }
     }
 }
 

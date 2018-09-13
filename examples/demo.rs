@@ -29,6 +29,7 @@ use chrono::{DateTime, Local};
 extern crate atomic;
 use atomic::Atomic;
 
+use std::collections::VecDeque;
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
@@ -109,7 +110,7 @@ lazy_static! {
     static ref G_DRAW_MODE: Atomic<DrawMode> = Atomic::new(DrawMode::Draw(2));
     static ref UNPRESS_OBSERVED: AtomicBool = AtomicBool::new(false);
     static ref WACOM_IN_RANGE: AtomicBool = AtomicBool::new(false);
-    static ref WACOM_HISTORY: Mutex<Vec<(i32, i32, i32)>> = Mutex::new(Vec::new());
+    static ref WACOM_HISTORY: Mutex<VecDeque<(IntVec2, i32)>> = Mutex::new(VecDeque::new());
     static ref G_COUNTER: Mutex<u32> = Mutex::new(0);
     static ref LAST_REFRESHED_CANVAS_RECT: Atomic<mxcfb_rect> = Atomic::new(mxcfb_rect::invalid());
     static ref SAVED_CANVAS: Mutex<Option<storage::CompressedCanvasState>> = Mutex::new(None);
@@ -436,82 +437,55 @@ fn on_wacom_input(app: &mut appctx::ApplicationContext, input: wacom::WacomEvent
                 DrawMode::Erase(s) => (color::WHITE, s * 3, false),
             };
 
-            let rad = (mult as f32 * (pressure as f32) / 2048.) / 2.0;
+            wacom_stack.push_back((
+                IntVec2 {
+                    x: x as i32,
+                    y: y as i32,
+                },
+                pressure as i32,
+            ));
 
-            let min_stack = if use_poly { 1 } else { 2 };
-            if wacom_stack.len() >= min_stack {
+            drop(x);
+            drop(y);
+            drop(pressure);
+
+            while wacom_stack.len() >= 3 {
                 let framebuffer = app.get_framebuffer_ref();
                 let rect = if use_poly {
-                    let prev = wacom_stack.pop().unwrap();
-                    let old_rad = (mult as f32 * (prev.2 as f32) / 2048.) / 2.0;
-                    // calculate normal
-                    let dx = x as i32 - prev.1;
-                    let dy = y as i32 - prev.0;
-                    let length = ((dx * dx + dy * dy) as f32).sqrt();
-                    let norm_x = dx as f32 / length;
-                    let norm_y = dy as f32 / length;
-                    framebuffer
-                        .draw_polygon(
-                            vec![
-                                IntVec2 {
-                                    x: prev.1 + (norm_y * old_rad) as i32,
-                                    y: prev.0 - (norm_x * old_rad) as i32,
-                                },
-                                IntVec2 {
-                                    x: prev.1 - (norm_y * old_rad) as i32,
-                                    y: prev.0 + (norm_x * old_rad) as i32,
-                                },
-                                IntVec2 {
-                                    x: x as i32 - (norm_y * rad) as i32,
-                                    y: y as i32 + (norm_x * rad) as i32,
-                                },
-                                IntVec2 {
-                                    x: x as i32 + (norm_y * rad) as i32,
-                                    y: y as i32 - (norm_x * rad) as i32,
-                                },
-                            ],
-                            true,
-                            col,
-                        ).merge(
-                            &framebuffer
-                                .draw_circle(
-                                    prev.0 as usize,
-                                    prev.1 as usize,
-                                    old_rad as usize,
-                                    col,
-                                ).merge(&framebuffer.draw_circle(
-                                    y as usize,
-                                    x as usize,
-                                    rad as usize,
-                                    col,
-                                )),
-                        )
-                } else {
-                    let controlpt = wacom_stack.pop().unwrap();
-                    let beginpt = wacom_stack.pop().unwrap();
+                    let points = vec![
+                        wacom_stack.pop_front().unwrap(),
+                        wacom_stack.get(0).unwrap().clone(),
+                        wacom_stack.get(1).unwrap().clone(),
+                    ];
+                    let radii: Vec<f32> = points
+                        .iter()
+                        .map(|point| ((mult as f32 * (point.1 as f32) / 2048.) / 2.0))
+                        .collect();
+                    // calculate control points
+                    let start_point = Vec2::from(points[2].0 + points[1].0) / 2.0;
+                    let ctrl_point = Vec2::from(points[1].0);
+                    let end_point = Vec2::from(points[1].0 + points[0].0) / 2.0;
+                    // calculate radii
+                    let start_width = (radii[2] + radii[1]) / 2.0;
+                    let ctrl_width = radii[1];
+                    let end_width = (radii[1] + radii[0]) / 2.0;
                     framebuffer.draw_dynamic_bezier(
-                        (
-                            Vec2 {
-                                x: beginpt.1 as f32,
-                                y: beginpt.0 as f32,
-                            },
-                            (rad * 2.0),
-                        ),
-                        (
-                            Vec2 {
-                                x: controlpt.1 as f32,
-                                y: controlpt.0 as f32,
-                            },
-                            (rad * 2.0),
-                        ),
-                        (
-                            Vec2 {
-                                x: x as f32,
-                                y: y as f32,
-                            },
-                            (rad * 2.0),
-                        ),
-                        1000,
+                        (start_point, start_width),
+                        (ctrl_point, ctrl_width),
+                        (end_point, end_width),
+                        10,
+                        col,
+                    )
+                } else {
+                    let rad = (mult as f32 * (pressure as f32) / 2048.) / 2.0;
+                    let beginpt = wacom_stack.pop_front().unwrap();
+                    let controlpt = wacom_stack.pop_front().unwrap();
+                    let endpt = wacom_stack.get(0).unwrap();
+                    framebuffer.draw_dynamic_bezier(
+                        (Vec2::from(beginpt.0), (rad * 2.0)),
+                        (Vec2::from(controlpt.0), (rad * 2.0)),
+                        (Vec2::from(endpt.0), (rad * 2.0)),
+                        10,
                         col,
                     )
                 };
@@ -532,7 +506,6 @@ fn on_wacom_input(app: &mut appctx::ApplicationContext, input: wacom::WacomEvent
                     LAST_REFRESHED_CANVAS_RECT.store(rect, Ordering::Relaxed);
                 }
             }
-            wacom_stack.push((y as i32, x as i32, pressure as i32));
         }
         wacom::WacomEvent::InstrumentChange { pen, state } => {
             match pen {

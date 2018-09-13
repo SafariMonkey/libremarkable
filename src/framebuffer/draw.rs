@@ -26,7 +26,7 @@ fn sample_bezier(startpt: Vec2, ctrlpt: Vec2, endpt: Vec2, samples: i32) -> Vec<
     let mut points = Vec::new();
     let mut lastpt = (-100, -100);
     for i in 0..samples {
-        let t = (i as f32) / samples as f32;
+        let t = (i as f32) / (samples-1) as f32;
         let precisept = Vec2 {
             x: (1.0 - t).powf(2.0) * startpt.x
                 + 2.0 * (1.0 - t) * t * ctrlpt.x
