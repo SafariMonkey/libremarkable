@@ -37,7 +37,7 @@ fn sample_bezier(startpt: Vec2, ctrlpt: Vec2, endpt: Vec2, samples: i32) -> Vec<
         };
         let pt = (precisept.x as i32, precisept.y as i32);
         // prevent oversampling
-        if pt != lastpt {
+        if pt != lastpt || i == samples - 1 {
             points.push((t, precisept));
             lastpt = pt;
         }
