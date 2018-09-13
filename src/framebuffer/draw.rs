@@ -322,7 +322,19 @@ impl<'a> framebuffer::FramebufferDraw for core::Framebuffer<'a> {
             // calculate tangent
             let velocity =
                 2.0 * (1.0 - t) * (ctrlpt.0 - startpt.0) + 2.0 * t * (endpt.0 - ctrlpt.0);
-            let tangent = velocity / velocity.length();
+            let speed = velocity.length();
+            let tangent = if speed > 0.0 {
+                velocity / speed
+            } else {
+                // handle case where control point == start/end point
+                let extent = startpt.0 - endpt.0;
+                if extent.length() > 0.0 {
+                    extent / extent.length()
+                } else {
+                    // all points are the same, so no tangent exists
+                    Vec2 { x: 0.0, y: 0.0 }
+                }
+            };
 
             left_edge.push(IntVec2::from(
                 (pt + Vec2 {
