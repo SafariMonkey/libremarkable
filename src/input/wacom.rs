@@ -70,15 +70,15 @@ pub enum WacomEvent {
         state: bool,
     },
     Hover {
-        y: u16,
-        x: u16,
+        y: f32,
+        x: f32,
         distance: u16,
         tilt_x: u16,
         tilt_y: u16,
     },
     Draw {
-        y: u16,
-        x: u16,
+        y: f32,
+        x: f32,
         pressure: u16,
         tilt_x: u16,
         tilt_y: u16,
@@ -95,8 +95,8 @@ pub fn decode(ev: &input_event, outer_state: &InputDeviceState) -> Option<InputE
         EV_SYNC => match state.last_tool.load(Ordering::Relaxed) {
             Some(WacomPen::ToolPen) => Some(InputEvent::WacomEvent {
                 event: WacomEvent::Hover {
-                    y: (f32::from(state.last_y.load(Ordering::Relaxed)) * WACOM_VSCALAR) as u16,
-                    x: (f32::from(state.last_x.load(Ordering::Relaxed)) * WACOM_HSCALAR) as u16,
+                    y: (f32::from(state.last_y.load(Ordering::Relaxed)) * WACOM_VSCALAR),
+                    x: (f32::from(state.last_x.load(Ordering::Relaxed)) * WACOM_HSCALAR),
                     distance: state.last_dist.load(Ordering::Relaxed) as u16,
                     tilt_x: state.last_xtilt.load(Ordering::Relaxed),
                     tilt_y: state.last_ytilt.load(Ordering::Relaxed),
@@ -104,8 +104,8 @@ pub fn decode(ev: &input_event, outer_state: &InputDeviceState) -> Option<InputE
             }),
             Some(WacomPen::Touch) => Some(InputEvent::WacomEvent {
                 event: WacomEvent::Draw {
-                    x: (f32::from(state.last_x.load(Ordering::Relaxed)) * WACOM_HSCALAR) as u16,
-                    y: (f32::from(state.last_y.load(Ordering::Relaxed)) * WACOM_VSCALAR) as u16,
+                    x: (f32::from(state.last_x.load(Ordering::Relaxed)) * WACOM_HSCALAR),
+                    y: (f32::from(state.last_y.load(Ordering::Relaxed)) * WACOM_VSCALAR),
                     pressure: state.last_pressure.load(Ordering::Relaxed),
                     tilt_x: state.last_xtilt.load(Ordering::Relaxed),
                     tilt_y: state.last_ytilt.load(Ordering::Relaxed),

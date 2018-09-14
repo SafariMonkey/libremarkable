@@ -110,7 +110,7 @@ lazy_static! {
     static ref G_DRAW_MODE: Atomic<DrawMode> = Atomic::new(DrawMode::Draw(2));
     static ref UNPRESS_OBSERVED: AtomicBool = AtomicBool::new(false);
     static ref WACOM_IN_RANGE: AtomicBool = AtomicBool::new(false);
-    static ref WACOM_HISTORY: Mutex<VecDeque<(IntVec2, i32)>> = Mutex::new(VecDeque::new());
+    static ref WACOM_HISTORY: Mutex<VecDeque<(Vec2, i32)>> = Mutex::new(VecDeque::new());
     static ref G_COUNTER: Mutex<u32> = Mutex::new(0);
     static ref LAST_REFRESHED_CANVAS_RECT: Atomic<mxcfb_rect> = Atomic::new(mxcfb_rect::invalid());
     static ref SAVED_CANVAS: Mutex<Option<storage::CompressedCanvasState>> = Mutex::new(None);
@@ -420,10 +420,10 @@ fn on_wacom_input(app: &mut appctx::ApplicationContext, input: wacom::WacomEvent
 
             // This is so that we can click the buttons outside the canvas region
             // normally meant to be touched with a finger using our stylus
-            if !CANVAS_REGION.contains_point(y.into(), x.into()) {
+            if !CANVAS_REGION.contains_point(y as u32, x as u32) {
                 wacom_stack.clear();
                 if UNPRESS_OBSERVED.fetch_and(false, Ordering::Relaxed) {
-                    match app.find_active_region(y, x) {
+                    match app.find_active_region(y as u16, x as u16) {
                         Some((region, _)) => (region.handler)(app, region.element.clone()),
                         None => {}
                     };
@@ -438,9 +438,9 @@ fn on_wacom_input(app: &mut appctx::ApplicationContext, input: wacom::WacomEvent
             };
 
             wacom_stack.push_back((
-                IntVec2 {
-                    x: x as i32,
-                    y: y as i32,
+                Vec2 {
+                    x: x,
+                    y: y,
                 },
                 pressure as i32,
             ));
@@ -462,9 +462,9 @@ fn on_wacom_input(app: &mut appctx::ApplicationContext, input: wacom::WacomEvent
                         .map(|point| ((mult as f32 * (point.1 as f32) / 2048.) / 2.0))
                         .collect();
                     // calculate control points
-                    let start_point = Vec2::from(points[2].0 + points[1].0) / 2.0;
-                    let ctrl_point = Vec2::from(points[1].0);
-                    let end_point = Vec2::from(points[1].0 + points[0].0) / 2.0;
+                    let start_point = (points[2].0 + points[1].0) / 2.0;
+                    let ctrl_point = points[1].0;
+                    let end_point = (points[1].0 + points[0].0) / 2.0;
                     // calculate radii
                     let start_width = (radii[2] + radii[1]) / 2.0;
                     let ctrl_width = radii[1];
