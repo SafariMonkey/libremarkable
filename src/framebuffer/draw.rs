@@ -24,9 +24,8 @@ macro_rules! max {
 /// Helper function to sample pixels on the bezier curve.
 fn sample_bezier(startpt: Vec2, ctrlpt: Vec2, endpt: Vec2, samples: i32) -> Vec<(f32, Vec2)> {
     let mut points = Vec::new();
-    let mut lastpt = (-100, -100);
     for i in 0..samples {
-        let t = (i as f32) / (samples-1) as f32;
+        let t = (i as f32) / (samples - 1) as f32;
         let precisept = Vec2 {
             x: (1.0 - t).powf(2.0) * startpt.x
                 + 2.0 * (1.0 - t) * t * ctrlpt.x
@@ -35,13 +34,8 @@ fn sample_bezier(startpt: Vec2, ctrlpt: Vec2, endpt: Vec2, samples: i32) -> Vec<
                 + 2.0 * (1.0 - t) * t * ctrlpt.y
                 + t.powf(2.0) * endpt.y,
         };
-        let pt = (precisept.x as i32, precisept.y as i32);
-        // prevent oversampling
-        if pt != lastpt || i == samples - 1 {
             points.push((t, precisept));
-            lastpt = pt;
         }
-    }
     points
 }
 
