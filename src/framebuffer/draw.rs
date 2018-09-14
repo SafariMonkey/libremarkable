@@ -325,6 +325,14 @@ impl<'a> framebuffer::FramebufferDraw for core::Framebuffer<'a> {
     ) -> mxcfb_rect {
         let mut left_edge = Vec::<IntVec2>::new();
         let mut right_edge = Vec::<IntVec2>::new();
+        let mut prev_left_pt = IntVec2 {
+            x: std::i32::MIN,
+            y: std::i32::MIN,
+        };
+        let mut prev_right_pt = IntVec2 {
+            x: std::i32::MIN,
+            y: std::i32::MIN,
+        };
         for (t, pt) in sample_bezier(startpt.0, ctrlpt.0, endpt.0, samples) {
             // interpolate width
             let width = 2.0 * if t < 0.5 {
@@ -349,19 +357,26 @@ impl<'a> framebuffer::FramebufferDraw for core::Framebuffer<'a> {
                     Vec2 { x: 0.0, y: 0.0 }
                 }
             };
-
-            left_edge.push(IntVec2::from(
+            let left_pt = IntVec2::from(
                 (pt + Vec2 {
                     x: -tangent.y * width / 2.0,
                     y: tangent.x * width / 2.0,
                 }).round(),
-            ));
-            right_edge.push(IntVec2::from(
+            );
+            if left_pt != prev_left_pt {
+                left_edge.push(left_pt);
+                prev_left_pt = left_pt;
+            }
+            let right_pt = IntVec2::from(
                 (pt + Vec2 {
                     x: tangent.y * width / 2.0,
                     y: -tangent.x * width / 2.0,
                 }).round(),
-            ));
+            );
+            if right_pt != prev_right_pt {
+                right_edge.push(right_pt);
+                prev_right_pt = right_pt;
+            }
         }
         right_edge.reverse();
         left_edge.append(&mut right_edge);

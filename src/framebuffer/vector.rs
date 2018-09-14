@@ -1,6 +1,6 @@
 use std;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct IntVec2 {
     pub x: i32,
     pub y: i32,
@@ -67,7 +67,7 @@ impl std::ops::Div<i32> for IntVec2 {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Vec2 {
     pub x: f32,
     pub y: f32,
