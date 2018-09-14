@@ -328,9 +328,9 @@ impl<'a> framebuffer::FramebufferDraw for core::Framebuffer<'a> {
         for (t, pt) in sample_bezier(startpt.0, ctrlpt.0, endpt.0, samples) {
             // interpolate width
             let width = 2.0 * if t < 0.5 {
-                startpt.1 * t + ctrlpt.1 * (1.0 - t)
+                startpt.1 * (0.5-t) + ctrlpt.1 * t
             } else {
-                ctrlpt.1 * (t - 1.0) + endpt.1 * (2.0 - t)
+                ctrlpt.1 * (1.0-t) + endpt.1 * (t-0.5)
             };
 
             // calculate tangent
@@ -352,14 +352,14 @@ impl<'a> framebuffer::FramebufferDraw for core::Framebuffer<'a> {
 
             left_edge.push(IntVec2::from(
                 (pt + Vec2 {
-                    x: -tangent.y * width,
-                    y: tangent.x * width,
+                    x: -tangent.y * width / 2.0,
+                    y: tangent.x * width / 2.0,
                 }).round(),
             ));
             right_edge.push(IntVec2::from(
                 (pt + Vec2 {
-                    x: tangent.y * width,
-                    y: -tangent.x * width,
+                    x: tangent.y * width / 2.0,
+                    y: -tangent.x * width / 2.0,
                 }).round(),
             ));
         }
