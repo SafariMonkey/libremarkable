@@ -278,10 +278,16 @@ impl<'a> framebuffer::FramebufferDraw for core::Framebuffer<'a> {
     }
 
     fn fill_circle(&mut self, y: usize, x: usize, rad: usize, v: color) -> mxcfb_rect {
-        for current in { 1..rad + 1 } {
-            for (x, y) in line_drawing::BresenhamCircle::new(x as i32, y as i32, current as i32) {
-                self.write_pixel(y as usize, x as usize, v);
+        let rad_square = (rad * rad) as i32;
+        let search_distance: i32 = (rad + 1) as i32;
+        for y_offset in { (-search_distance)..search_distance } {
+            let y_square = y_offset * y_offset;
+            for x_offset in (-search_distance)..search_distance {
+                let x_square = x_offset * x_offset;
+                if x_square + y_square <= rad_square {
+                    self.write_pixel(y + y_offset as usize, x + x_offset as usize, v);
             }
+        }
         }
         mxcfb_rect {
             top: y as u32 - rad as u32,
