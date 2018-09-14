@@ -145,6 +145,7 @@ impl<'a> framebuffer::FramebufferDraw for core::Framebuffer<'a> {
             ymin: i32,
             x: i32,
             sign: i32,
+            direction: i32,
             dx: i32,
             dy: i32,
             sum: i32,
@@ -156,12 +157,17 @@ impl<'a> framebuffer::FramebufferDraw for core::Framebuffer<'a> {
         for i in 0..num_edges {
             let p0 = points[i];
             let p1 = points[(i + 1) % num_edges];
-            let (lower, higher) = if p0.y < p1.y { (p0, p1) } else { (p1, p0) };
+            let (lower, higher, direction) = if p0.y < p1.y {
+                (p0, p1, 1)
+            } else {
+                (p1, p0, -1)
+            };
             edge_table.push(EdgeBucket {
                 ymax: higher.y,
                 ymin: lower.y,
                 x: lower.x,
                 sign: if lower.x > higher.x { 1 } else { -1 },
+                direction: direction,
                 dx: (higher.x - lower.x).abs(),
                 dy: (higher.y - lower.y).abs(),
                 sum: 0,
@@ -193,15 +199,23 @@ impl<'a> framebuffer::FramebufferDraw for core::Framebuffer<'a> {
 
             // for every pair of edges on the active list,
             // apply the fill method selected
+            if fill {
+                let mut prev_x = 0;
+                let mut winding_count = 0;
+                for edge in active_list.iter() {
+                    if winding_count != 0 {
+                        for x in prev_x..edge.x {
+                            self.write_pixel(scanline as usize, x as usize, c);
+                        }
+                    }
+                    prev_x = edge.x;
+                    winding_count += edge.direction;
+                }
+            } else {
             for pair in active_list.chunks(2) {
                 if pair.len() != 2 {
                     continue;
                 }
-                if fill {
-                    for x in pair[0].x..pair[1].x {
-                        self.write_pixel(scanline as usize, x as usize, c);
-                    }
-                } else {
                     if pair[0].x != pair[1].x {
                         self.write_pixel(scanline as usize, pair[0].x as usize, c);
                         self.write_pixel(scanline as usize, pair[1].x as usize - 1, c);
