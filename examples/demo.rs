@@ -477,14 +477,14 @@ fn on_wacom_input(app: &mut appctx::ApplicationContext, input: wacom::WacomEvent
                         col,
                     )
                 } else {
-                    let rad = (mult as f32 * (pressure as f32) / 2048.) / 2.0;
                     let beginpt = wacom_stack.pop_front().unwrap();
                     let controlpt = wacom_stack.pop_front().unwrap();
                     let endpt = wacom_stack.get(0).unwrap();
+                    let width = mult as f32 * (controlpt.1 as f32) / 2048.;
                     framebuffer.draw_dynamic_bezier(
-                        (Vec2::from(beginpt.0), (rad * 2.0)),
-                        (Vec2::from(controlpt.0), (rad * 2.0)),
-                        (Vec2::from(endpt.0), (rad * 2.0)),
+                        (Vec2::from(beginpt.0), (width)),
+                        (Vec2::from(controlpt.0), (width)),
+                        (Vec2::from(endpt.0), (width)),
                         10,
                         col,
                     )
