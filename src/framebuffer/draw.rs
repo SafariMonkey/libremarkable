@@ -322,9 +322,9 @@ impl<'a> framebuffer::FramebufferDraw for core::Framebuffer<'a> {
         for (t, pt) in sample_bezier(startpt.0, ctrlpt.0, endpt.0, samples) {
             // interpolate width
             let width = 2.0 * if t < 0.5 {
-                startpt.1 * (0.5-t) + ctrlpt.1 * t
+                startpt.1 * (0.5 - t) + ctrlpt.1 * t
             } else {
-                ctrlpt.1 * (1.0-t) + endpt.1 * (t-0.5)
+                ctrlpt.1 * (1.0 - t) + endpt.1 * (t - 0.5)
             };
 
             // calculate tangent
