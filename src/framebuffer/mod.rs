@@ -28,6 +28,7 @@ pub trait FramebufferIO {
     ) -> Result<u32, &'static str>;
 }
 
+pub mod graphics;
 pub mod vector;
 
 pub mod draw;

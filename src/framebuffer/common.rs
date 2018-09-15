@@ -201,6 +201,26 @@ impl mxcfb_rect {
             }
         }
     }
+    pub fn expand(&self, margin: u32) -> mxcfb_rect {
+        let top = if self.top > margin {
+            self.top - margin
+        } else {
+            0
+        };
+        let left = if self.left > margin {
+            self.left - margin
+        } else {
+            0
+        };
+        let width = self.width + (left - self.left) + 2 * margin;
+        let height = self.height + (top - self.top) + 2 * margin;
+        mxcfb_rect {
+            top: top,
+            left: left,
+            width: width,
+            height: height,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
