@@ -380,7 +380,11 @@ impl<'a> framebuffer::FramebufferDraw for core::Framebuffer<'a> {
         }
         right_edge.reverse();
         left_edge.append(&mut right_edge);
-        self.draw_polygon(left_edge, true, v)
+        if left_edge.len() > 2 {
+            self.draw_polygon(left_edge, true, v)
+        } else {
+            mxcfb_rect::invalid()
+        }
     }
 
     fn draw_text(
