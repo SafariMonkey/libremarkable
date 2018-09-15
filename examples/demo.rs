@@ -484,21 +484,15 @@ fn on_wacom_input(app: &mut appctx::ApplicationContext, input: wacom::WacomEvent
                     )
                 };
 
-                if !LAST_REFRESHED_CANVAS_RECT
-                    .load(Ordering::Relaxed)
-                    .contains_rect(&rect)
-                {
-                    framebuffer.partial_refresh(
-                        &rect,
-                        PartialRefreshMode::Async,
-                        waveform_mode::WAVEFORM_MODE_DU,
-                        display_temp::TEMP_USE_REMARKABLE_DRAW,
-                        dither_mode::EPDC_FLAG_EXP1,
-                        DRAWING_QUANT_BIT,
-                        false,
-                    );
-                    LAST_REFRESHED_CANVAS_RECT.store(rect, Ordering::Relaxed);
-                }
+                framebuffer.partial_refresh(
+                    &rect,
+                    PartialRefreshMode::Async,
+                    waveform_mode::WAVEFORM_MODE_DU,
+                    display_temp::TEMP_USE_REMARKABLE_DRAW,
+                    dither_mode::EPDC_FLAG_EXP1,
+                    DRAWING_QUANT_BIT,
+                    false,
+                );
             }
         }
         wacom::WacomEvent::InstrumentChange { pen, state } => {
