@@ -437,13 +437,7 @@ fn on_wacom_input(app: &mut appctx::ApplicationContext, input: wacom::WacomEvent
                 DrawMode::Erase(s) => (color::WHITE, s * 3, false),
             };
 
-            wacom_stack.push_back((
-                Vec2 {
-                    x: x,
-                    y: y,
-                },
-                pressure as i32,
-            ));
+            wacom_stack.push_back((Vec2 { x: x, y: y }, pressure as i32));
 
             drop(x);
             drop(y);

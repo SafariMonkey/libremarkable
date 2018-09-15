@@ -83,7 +83,7 @@ impl color {
             color::WHITE => [0xFF, 0xFF],
             color::GRAY(level) => color::rgb_to_native(255 - level, 255 - level, 255 - level),
             color::NATIVE_COMPONENTS(c1, c2) => [c1, c2],
-            color::RGB(r8, g8, b8) => color::rgb_to_native(r8, g8, b8)
+            color::RGB(r8, g8, b8) => color::rgb_to_native(r8, g8, b8),
         }
     }
 
