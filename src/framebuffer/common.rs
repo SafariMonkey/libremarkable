@@ -186,8 +186,12 @@ impl mxcfb_rect {
 
 impl mxcfb_rect {
     pub fn merge(&self, rect: &mxcfb_rect) -> mxcfb_rect {
-        if self.top + self.left == 0 || rect.top + rect.left == 0 {
+        if self.top + self.left == 0 && rect.top + rect.left == 0 {
             mxcfb_rect::invalid()
+        } else if self.top + self.left == 0 {
+            rect.clone()
+        } else if rect.top + rect.left == 0 {
+            self.clone()
         } else {
             let top = std::cmp::min(self.top, rect.top);
             let left = std::cmp::min(self.left, rect.left);
