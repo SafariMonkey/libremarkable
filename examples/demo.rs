@@ -500,8 +500,10 @@ fn on_wacom_input(app: &mut appctx::ApplicationContext, input: wacom::WacomEvent
                 let end_width = radii[1] + radii[0];
                 let rect = framebuffer
                     .mask(|p| pattern.evaluate(p))
-                    .mask(|p| CANVAS_REGION.contains_point(p.cast().unwrap()))
-                    .mask(|p| p.x >= 0 && p.y >= 0)
+                    .mask(|p| match p.cast() {
+                        Some(p) => CANVAS_REGION.contains_point(p),
+                        None => false,
+                    })
                     .draw_dynamic_bezier(
                         (start_point, start_width),
                         (ctrl_point, ctrl_width),
