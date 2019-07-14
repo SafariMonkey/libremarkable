@@ -94,6 +94,9 @@ pub fn lua_draw_text(
     ) = (y, x, text, size, color)
     {
         let framebuffer = get_current_framebuffer!();
+        // Need this to refer to the framebuffer because
+        // it won't be exposed through the PixelCanvas trait.
+        let dfont = framebuffer.default_font.clone();
         // TODO: Expose the drawn region to Lua so that it can be updated that's
         // returned from this draw_text function.
         framebuffer.draw_text(
@@ -103,6 +106,7 @@ pub fn lua_draw_text(
             },
             stext,
             nsize as f32,
+            &dfont,
             color::GRAY(ncolor as u8),
             false,
         );

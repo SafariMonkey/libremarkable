@@ -277,6 +277,7 @@ fn on_load_canvas(app: &mut appctx::ApplicationContext, _element: UIElementHandl
 
 fn on_touch_rustlogo(app: &mut appctx::ApplicationContext, _element: UIElementHandle) {
     let framebuffer = app.get_framebuffer_ref();
+    let dfont = framebuffer.default_font.clone();
     let new_press_count = {
         let mut v = G_COUNTER.lock().unwrap();
         *v += 1;
@@ -298,6 +299,7 @@ fn on_touch_rustlogo(app: &mut appctx::ApplicationContext, _element: UIElementHa
         },
         format!("{0}", new_press_count),
         65.0,
+        &dfont,
         color::BLACK,
         false,
     );
@@ -436,11 +438,10 @@ fn on_wacom_input(app: &mut appctx::ApplicationContext, input: wacom::WacomEvent
                     let element = match region {
                         Some((region, _)) => Some(region.element.clone()),
                         None => None,
-                        
                     };
                     match element {
-                      Some(element) => (region.unwrap().0.handler)(app, element),
-                      None => {}
+                        Some(element) => (region.unwrap().0.handler)(app, element),
+                        None => {}
                     }
                 }
                 return;
@@ -682,7 +683,7 @@ fn main() {
             refresh: UIConstraintRefresh::Refresh,
 
             /* We could have alternatively done this:
-            
+
                // Create a clickable region for multitouch input and associate it with its handler fn
                app.create_active_region(10, 900, 240, 480, on_touch_rustlogo);
             */

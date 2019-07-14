@@ -166,7 +166,9 @@ impl<'a> ApplicationContext<'a> {
         refresh: UIConstraintRefresh,
     ) -> mxcfb_rect {
         let framebuffer = self.get_framebuffer_ref();
-        let mut draw_area: mxcfb_rect = framebuffer.draw_text(position, text, scale, c, false);
+        let dfont = framebuffer.default_font.clone();
+        let mut draw_area: mxcfb_rect =
+            framebuffer.draw_text(position, text, scale, &dfont, c, false);
 
         // Draw the border if border_px is set to a non-default value
         if border_px > 0 {

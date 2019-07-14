@@ -7,6 +7,7 @@ pub mod storage;
 pub mod io;
 
 pub use cgmath;
+use rusttype::Font;
 
 use image;
 pub trait FramebufferIO {
@@ -94,6 +95,7 @@ pub trait FramebufferDraw {
         pos: cgmath::Point2<f32>,
         text: String,
         size: f32,
+        font: &Font,
         col: common::color,
         dryrun: bool,
     ) -> common::mxcfb_rect;
