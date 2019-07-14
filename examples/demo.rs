@@ -71,6 +71,16 @@ enum DrawPattern {
     Checkered(i32),
 }
 
+impl DrawPattern {
+    fn evaluate(&self, pos: cgmath::Point2<i32>) -> bool {
+        let cgmath::Point2 { x, y } = pos;
+        match self {
+            DrawPattern::Fill => true,
+            DrawPattern::Checkered(s) => (x % *s * 2 < *s) ^ (y % *s * 2 < *s),
+        }
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Debug)]
 enum TouchMode {
     OnlyUI,
@@ -489,10 +499,7 @@ fn on_wacom_input(app: &mut appctx::ApplicationContext, input: wacom::WacomEvent
                 let ctrl_width = radii[1] * 2.0;
                 let end_width = radii[1] + radii[0];
                 let rect = framebuffer
-                    .mask(|cgmath::Point2 { x, y }| match pattern {
-                        DrawPattern::Fill => true,
-                        DrawPattern::Checkered(s) => (x % s * 2 < s) ^ (y % s * 2 < s),
-                    })
+                    .mask(|p| pattern.evaluate(p))
                     .mask(|p| CANVAS_REGION.contains_point(&p.cast().unwrap()))
                     .mask(|p| p.x >= 0 && p.y >= 0)
                     .draw_dynamic_bezier(
