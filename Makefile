@@ -19,6 +19,7 @@ docker-env:
 examples-docker: docker-env
 	docker volume create cargo-registry
 	docker run \
+		-t \
 		--rm \
 		--user builder \
 		-v $(shell pwd):/home/builder/libremarkable:rw \
