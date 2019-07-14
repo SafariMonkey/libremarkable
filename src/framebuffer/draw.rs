@@ -4,12 +4,24 @@ use rusttype::{point, Font, Scale};
 
 use framebuffer;
 use framebuffer::cgmath::*;
-use framebuffer::common::*;
-use framebuffer::core;
+use framebuffer::common::{self, *};
 use framebuffer::graphics;
-use framebuffer::FramebufferIO;
+use framebuffer::{FramebufferIO, PixelCanvas};
 
-impl<'a> framebuffer::FramebufferDraw for core::Framebuffer<'a> {
+impl<T> PixelCanvas for T
+where
+    T: FramebufferIO,
+{
+    /// Writes a single pixel at `pos` with value `v`
+    fn write_pixel(&mut self, pos: cgmath::Point2<i32>, v: common::color) {
+        self.write_pixel(pos, v)
+    }
+}
+
+impl<T> framebuffer::FramebufferDraw for T
+where
+    T: PixelCanvas,
+{
     fn draw_image(&mut self, img: &RgbImage, pos: Point2<i32>) -> mxcfb_rect {
         for (x, y, pixel) in img.enumerate_pixels() {
             let pixel_pos = pos + vec2(x as i32, y as i32);

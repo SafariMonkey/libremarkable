@@ -33,6 +33,11 @@ pub trait FramebufferIO {
     fn clear(&mut self);
 }
 
+pub trait PixelCanvas {
+    /// Writes a single pixel at `pos` with value `v`
+    fn write_pixel(&mut self, pos: cgmath::Point2<i32>, v: common::color);
+}
+
 mod graphics;
 
 pub mod draw;
