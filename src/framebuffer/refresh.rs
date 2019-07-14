@@ -7,6 +7,7 @@ use framebuffer;
 use framebuffer::common;
 use framebuffer::core;
 use framebuffer::mxcfb::*;
+use framebuffer::Region;
 
 pub enum PartialRefreshMode {
     DryRun,
@@ -23,12 +24,7 @@ impl<'a> framebuffer::FramebufferRefresh for core::Framebuffer<'a> {
         quant_bit: i32,
         wait_completion: bool,
     ) -> u32 {
-        let screen = common::mxcfb_rect {
-            top: 0,
-            left: 0,
-            height: self.var_screen_info.yres,
-            width: self.var_screen_info.xres,
-        };
+        let screen = self.get_region();
         let marker = self.marker.fetch_add(1, Ordering::Relaxed);
         let whole = mxcfb_update_data {
             update_mode: common::update_mode::UPDATE_MODE_FULL as u32,

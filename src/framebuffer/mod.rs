@@ -38,6 +38,11 @@ pub trait PixelCanvas {
     fn write_pixel(&mut self, pos: cgmath::Point2<i32>, v: common::color);
 }
 
+pub trait Region {
+    /// Returns the associated region
+    fn get_region(&self) -> common::mxcfb_rect;
+}
+
 pub mod canvas;
 mod graphics;
 

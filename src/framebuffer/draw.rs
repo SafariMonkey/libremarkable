@@ -5,8 +5,21 @@ use rusttype::{point, Font, Scale};
 use framebuffer;
 use framebuffer::cgmath::*;
 use framebuffer::common::{self, *};
+use framebuffer::core::Framebuffer;
 use framebuffer::graphics;
-use framebuffer::{FramebufferIO, PixelCanvas};
+use framebuffer::{FramebufferIO, PixelCanvas, Region};
+
+impl<'a> Region for Framebuffer<'a> {
+    /// Returns the associated region
+    fn get_region(&self) -> mxcfb_rect {
+        mxcfb_rect {
+            top: 0,
+            left: 0,
+            height: self.var_screen_info.yres,
+            width: self.var_screen_info.xres,
+        }
+    }
+}
 
 impl<T> PixelCanvas for T
 where
