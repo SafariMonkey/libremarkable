@@ -38,9 +38,6 @@ where
     F: FnMut(Point2<i32>) -> bool,
 {
     fn mask(&'a mut self, mask: F) -> MaskedCanvas<'a, C, F> {
-        return MaskedCanvas {
-            source: self,
-            mask: mask,
-        };
+        MaskedCanvas { source: self, mask }
     }
 }

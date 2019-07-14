@@ -75,7 +75,7 @@ pub fn decode(ev: &input_event, outer_state: &InputDeviceState) -> Option<InputE
                     let event = MultitouchEvent::Touch {
                         gesture_seq: state.last_touch_id.load(Ordering::Relaxed),
                         finger_id: state.last_finger_id.load(Ordering::Relaxed),
-                        position: cgmath::Point2 { x: x, y: y },
+                        position: cgmath::Point2 { x, y },
                     };
 
                     Some(InputEvent::MultitouchEvent { event })

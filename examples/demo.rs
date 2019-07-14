@@ -455,7 +455,7 @@ fn on_wacom_input(app: &mut appctx::ApplicationContext, input: wacom::WacomEvent
 
             // This is so that we can click the buttons outside the canvas region
             // normally meant to be touched with a finger using our stylus
-            if !CANVAS_REGION.contains_point(&position.cast().unwrap()) {
+            if !CANVAS_REGION.contains_point(position.cast().unwrap()) {
                 wacom_stack.clear();
                 if UNPRESS_OBSERVED.fetch_and(false, Ordering::Relaxed) {
                     let region = app
@@ -500,7 +500,7 @@ fn on_wacom_input(app: &mut appctx::ApplicationContext, input: wacom::WacomEvent
                 let end_width = radii[1] + radii[0];
                 let rect = framebuffer
                     .mask(|p| pattern.evaluate(p))
-                    .mask(|p| CANVAS_REGION.contains_point(&p.cast().unwrap()))
+                    .mask(|p| CANVAS_REGION.contains_point(p.cast().unwrap()))
                     .mask(|p| p.x >= 0 && p.y >= 0)
                     .draw_dynamic_bezier(
                         (start_point, start_width),
@@ -562,7 +562,7 @@ fn on_touch_handler(app: &mut appctx::ApplicationContext, input: multitouch::Mul
             finger_id: _,
             position,
         } => {
-            if !CANVAS_REGION.contains_point(&position.cast().unwrap()) {
+            if !CANVAS_REGION.contains_point(position.cast().unwrap()) {
                 return;
             }
             let rect = match G_TOUCH_MODE.load(Ordering::Relaxed) {

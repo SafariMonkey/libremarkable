@@ -195,7 +195,7 @@ impl mxcfb_rect {
 }
 
 impl mxcfb_rect {
-    pub fn contains_point(&self, p: &cgmath::Point2<u32>) -> bool {
+    pub fn contains_point(&self, p: cgmath::Point2<u32>) -> bool {
         !(p.x < self.left
             || p.x > (self.left + self.width)
             || p.y < self.top
@@ -203,23 +203,23 @@ impl mxcfb_rect {
     }
 
     pub fn contains_rect(&self, rect: &mxcfb_rect) -> bool {
-        self.contains_point(&cgmath::Point2 {
+        self.contains_point(cgmath::Point2 {
             x: rect.left,
             y: rect.top,
-        }) && self.contains_point(&cgmath::Point2 {
+        }) && self.contains_point(cgmath::Point2 {
             x: rect.left + rect.width,
             y: rect.top + rect.height,
         })
     }
 
-    pub fn merge_pixel(&self, p: &cgmath::Point2<u32>) -> mxcfb_rect {
+    pub fn merge_pixel(&self, p: cgmath::Point2<u32>) -> mxcfb_rect {
         let top = std::cmp::min(self.top, p.y);
         let left = std::cmp::min(self.left, p.x);
         let bottom = std::cmp::max(self.top + self.height, p.y);
         let right = std::cmp::max(self.left + self.width, p.x);
         mxcfb_rect {
-            left: left,
-            top: top,
+            left,
+            top,
             width: right - left,
             height: bottom - top,
         }
@@ -231,17 +231,17 @@ impl mxcfb_rect {
         if self_is_empty && rect_is_empty {
             mxcfb_rect::invalid()
         } else if self_is_empty {
-            rect.clone()
+            *rect
         } else if rect_is_empty {
-            self.clone()
+            *self
         } else {
             let top = std::cmp::min(self.top, rect.top);
             let left = std::cmp::min(self.left, rect.left);
             let bottom = std::cmp::max(self.top + self.height, rect.top + rect.height);
             let right = std::cmp::max(self.left + self.width, rect.left + rect.width);
             mxcfb_rect {
-                left: left,
-                top: top,
+                left,
+                top,
                 width: right - left,
                 height: bottom - top,
             }

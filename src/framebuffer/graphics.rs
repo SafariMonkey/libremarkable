@@ -113,7 +113,7 @@ where
             ymin: lower.y,
             x: lower.x,
             sign: if lower.x > higher.x { 1 } else { -1 },
-            direction: direction,
+            direction,
             dx: (higher.x - lower.x).abs(),
             dy: (higher.y - lower.y).abs(),
             sum: 0,
@@ -126,12 +126,12 @@ where
     let mut active_list = Vec::<EdgeBucket>::new();
 
     // initialise scanline with lowest ymin
-    let mut scanline = edge_table[0].clone().ymin;
+    let mut scanline = edge_table[0].ymin;
 
-    while edge_table.len() > 0 {
+    while !edge_table.is_empty() {
         // remove edges that end on the current scanline
-        edge_table.retain(|edge| if edge.ymax == scanline { false } else { true });
-        active_list.retain(|edge| if edge.ymax == scanline { false } else { true });
+        edge_table.retain(|edge| edge.ymax != scanline);
+        active_list.retain(|edge| edge.ymax != scanline);
 
         // push edges that start on this scanline to the active list
         for edge in edge_table.iter() {
@@ -150,7 +150,7 @@ where
         for edge in active_list.iter() {
             if winding_count != 0 {
                 for x in prev_x..edge.x {
-                    write_pixel(Point2 { x: x, y: scanline });
+                    write_pixel(Point2 { x, y: scanline });
                 }
             }
             prev_x = edge.x;
@@ -250,11 +250,12 @@ where
     };
     for (t, pt) in sample_bezier(startpt.0, ctrlpt.0, endpt.0, samples) {
         // interpolate width
-        let width = 2.0 * if t < 0.5 {
-            startpt.1 * (0.5 - t) + ctrlpt.1 * t
-        } else {
-            ctrlpt.1 * (1.0 - t) + endpt.1 * (t - 0.5)
-        };
+        let width = 2.0
+            * if t < 0.5 {
+                startpt.1 * (0.5 - t) + ctrlpt.1 * t
+            } else {
+                ctrlpt.1 * (1.0 - t) + endpt.1 * (t - 0.5)
+            };
 
         // calculate tangent
         let velocity = 2.0 * (1.0 - t) * (ctrlpt.0 - startpt.0) + 2.0 * t * (endpt.0 - ctrlpt.0);
@@ -271,20 +272,22 @@ where
                 Vector2 { x: 0.0, y: 0.0 }
             }
         };
-        let left_pt = (pt + Vector2 {
-            x: -tangent.y * width / 2.0,
-            y: tangent.x * width / 2.0,
-        })
+        let left_pt = (pt
+            + Vector2 {
+                x: -tangent.y * width / 2.0,
+                y: tangent.x * width / 2.0,
+            })
         .cast()
         .unwrap();
         if left_pt != prev_left_pt {
             left_edge.push(left_pt);
             prev_left_pt = left_pt;
         }
-        let right_pt = (pt + Vector2 {
-            x: tangent.y * width / 2.0,
-            y: -tangent.x * width / 2.0,
-        })
+        let right_pt = (pt
+            + Vector2 {
+                x: tangent.y * width / 2.0,
+                y: -tangent.x * width / 2.0,
+            })
         .cast()
         .unwrap();
         if right_pt != prev_right_pt {
