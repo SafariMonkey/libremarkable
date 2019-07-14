@@ -45,3 +45,60 @@ where
         MaskedCanvas { source: self, mask }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use framebuffer::cgmath::Vector2;
+    use framebuffer::FramebufferDraw;
+
+    struct Mock<'a> {
+        pixel_writes: &'a mut Vec<Point2<i32>>,
+    }
+    impl<'a> Mock<'a> {
+        fn write_pixel(&mut self, point: Point2<i32>) {
+            self.pixel_writes.push(point)
+        }
+        fn clear(&mut self) {
+            self.pixel_writes.clear()
+        }
+    }
+
+    impl<'a> PixelCanvas for Mock<'a> {
+        fn write_pixel(&mut self, point: Point2<i32>, _col: common::color) {
+            self.write_pixel(point)
+        }
+    }
+
+    #[test]
+    fn test_draw_bool_mask() {
+        let mut mock = Mock {
+            pixel_writes: &mut Vec::new(),
+        };
+        mock.mask(|_| true)
+            .write_pixel(Point2 { x: 100, y: 100 }, common::color::BLACK);
+        assert_eq!(mock.pixel_writes, &vec![Point2 { x: 100, y: 100 }]);
+
+        mock.clear();
+        mock.mask(|_| false)
+            .write_pixel(Point2 { x: 100, y: 100 }, common::color::BLACK);
+        assert_eq!(mock.pixel_writes, &vec![]);
+    }
+
+    #[test]
+    fn test_draw_checker_mask() {
+        let mut mock = Mock {
+            pixel_writes: &mut Vec::new(),
+        };
+        mock.mask(|Point2 { x, y }| (x % 2 < 1) ^ (y % 2 < 1))
+            .fill_rect(
+                Point2 { x: 100, y: 100 },
+                Vector2 { x: 2, y: 2 },
+                common::color::BLACK,
+            );
+        assert_eq!(
+            mock.pixel_writes,
+            &vec![Point2 { x: 101, y: 100 }, Point2 { x: 100, y: 101 }]
+        );
+    }
+}
