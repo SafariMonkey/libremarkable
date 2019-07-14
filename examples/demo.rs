@@ -11,6 +11,7 @@ extern crate libremarkable;
 use libremarkable::framebuffer::cgmath;
 use libremarkable::framebuffer::cgmath::EuclideanSpace;
 use libremarkable::framebuffer::common::*;
+use libremarkable::framebuffer::filter::MaskCanvas;
 use libremarkable::framebuffer::refresh::PartialRefreshMode;
 use libremarkable::framebuffer::storage;
 use libremarkable::framebuffer::{FramebufferDraw, FramebufferIO, FramebufferRefresh};
@@ -39,29 +40,35 @@ use std::time::Duration;
 
 #[derive(Copy, Clone, PartialEq)]
 enum DrawMode {
-    Draw(u32),
-    Erase(u32),
+    Draw(u32, DrawPattern),
+    Erase(u32, DrawPattern),
 }
 impl DrawMode {
     fn set_size(self, new_size: u32) -> Self {
         match self {
-            DrawMode::Draw(_) => DrawMode::Draw(new_size),
-            DrawMode::Erase(_) => DrawMode::Erase(new_size),
+            DrawMode::Draw(_, p) => DrawMode::Draw(new_size, p),
+            DrawMode::Erase(_, p) => DrawMode::Erase(new_size, p),
         }
     }
     fn color_as_string(self) -> String {
         match self {
-            DrawMode::Draw(_) => "Black",
-            DrawMode::Erase(_) => "White",
+            DrawMode::Draw(_, _) => "Black",
+            DrawMode::Erase(_, _) => "White",
         }
         .into()
     }
     fn get_size(self) -> u32 {
         match self {
-            DrawMode::Draw(s) => s,
-            DrawMode::Erase(s) => s,
+            DrawMode::Draw(s, _) => s,
+            DrawMode::Erase(s, _) => s,
         }
     }
+}
+
+#[derive(Copy, Clone, PartialEq)]
+enum DrawPattern {
+    Fill,
+    Checkered(i32),
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -106,7 +113,7 @@ const CANVAS_REGION: mxcfb_rect = mxcfb_rect {
 
 lazy_static! {
     static ref G_TOUCH_MODE: Atomic<TouchMode> = Atomic::new(TouchMode::OnlyUI);
-    static ref G_DRAW_MODE: Atomic<DrawMode> = Atomic::new(DrawMode::Draw(2));
+    static ref G_DRAW_MODE: Atomic<DrawMode> = Atomic::new(DrawMode::Draw(2, DrawPattern::Fill));
     static ref UNPRESS_OBSERVED: AtomicBool = AtomicBool::new(false);
     static ref WACOM_IN_RANGE: AtomicBool = AtomicBool::new(false);
     static ref WACOM_HISTORY: Mutex<VecDeque<(cgmath::Point2<f32>, i32)>> =
@@ -245,7 +252,7 @@ fn on_invert_canvas(app: &mut appctx::ApplicationContext, element: UIElementHand
     end_bench!(invert);
 
     // Invert the draw color as well for more natural UX
-    on_toggle_eraser(app, element);
+    on_change_colour(app, element);
 }
 
 fn on_load_canvas(app: &mut appctx::ApplicationContext, _element: UIElementHandle) {
@@ -314,10 +321,18 @@ fn on_touch_rustlogo(app: &mut appctx::ApplicationContext, _element: UIElementHa
     );
 }
 
-fn on_toggle_eraser(app: &mut appctx::ApplicationContext, _: UIElementHandle) {
+fn on_change_colour(app: &mut appctx::ApplicationContext, _: UIElementHandle) {
     let (new_mode, name) = match G_DRAW_MODE.load(Ordering::Relaxed) {
-        DrawMode::Erase(s) => (DrawMode::Draw(s), "Black".to_owned()),
-        DrawMode::Draw(s) => (DrawMode::Erase(s), "White".to_owned()),
+        DrawMode::Erase(s, _) => (DrawMode::Draw(s, DrawPattern::Fill), "Black".to_owned()),
+        DrawMode::Draw(s, pat) => match pat {
+            DrawPattern::Fill => (
+                DrawMode::Draw(s, DrawPattern::Checkered(16)),
+                "Checkered".to_owned(),
+            ),
+            DrawPattern::Checkered(_) => {
+                (DrawMode::Erase(s, DrawPattern::Fill), "White".to_owned())
+            }
+        },
     };
     G_DRAW_MODE.store(new_mode, Ordering::Relaxed);
 
@@ -447,9 +462,9 @@ fn on_wacom_input(app: &mut appctx::ApplicationContext, input: wacom::WacomEvent
                 return;
             }
 
-            let (col, mult) = match G_DRAW_MODE.load(Ordering::Relaxed) {
-                DrawMode::Draw(s) => (color::BLACK, s),
-                DrawMode::Erase(s) => (color::WHITE, s * 3),
+            let (col, pattern, mult) = match G_DRAW_MODE.load(Ordering::Relaxed) {
+                DrawMode::Draw(s, pat) => (color::BLACK, pat, s),
+                DrawMode::Erase(s, pat) => (color::WHITE, pat, s * 3),
             };
 
             wacom_stack.push_back((position.cast().unwrap(), pressure as i32));
@@ -473,13 +488,20 @@ fn on_wacom_input(app: &mut appctx::ApplicationContext, input: wacom::WacomEvent
                 let start_width = radii[2] + radii[1];
                 let ctrl_width = radii[1] * 2.0;
                 let end_width = radii[1] + radii[0];
-                let rect = framebuffer.draw_dynamic_bezier(
-                    (start_point, start_width),
-                    (ctrl_point, ctrl_width),
-                    (end_point, end_width),
-                    10,
-                    col,
-                );
+                let rect = framebuffer
+                    .mask(|cgmath::Point2 { x, y }| match pattern {
+                        DrawPattern::Fill => true,
+                        DrawPattern::Checkered(s) => (x % s * 2 < s) ^ (y % s * 2 < s),
+                    })
+                    .mask(|p| CANVAS_REGION.contains_point(&p.cast().unwrap()))
+                    .mask(|p| p.x >= 0 && p.y >= 0)
+                    .draw_dynamic_bezier(
+                        (start_point, start_width),
+                        (ctrl_point, ctrl_width),
+                        (end_point, end_width),
+                        10,
+                        col,
+                    );
 
                 framebuffer.partial_refresh(
                     &rect,
@@ -856,7 +878,7 @@ fn main() {
             position: cgmath::Point2 { x: 960, y: 580 },
             refresh: UIConstraintRefresh::Refresh,
 
-            onclick: Some(on_toggle_eraser),
+            onclick: Some(on_change_colour),
             inner: UIElement::Text {
                 foreground: color::BLACK,
                 text: "Draw Color".to_owned(),

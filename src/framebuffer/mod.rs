@@ -38,6 +38,7 @@ pub trait PixelCanvas {
     fn write_pixel(&mut self, pos: cgmath::Point2<i32>, v: common::color);
 }
 
+pub mod filter;
 mod graphics;
 
 pub mod draw;
