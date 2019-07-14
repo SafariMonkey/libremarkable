@@ -26,6 +26,7 @@ use framebuffer::core;
 use framebuffer::refresh::PartialRefreshMode;
 use framebuffer::FramebufferBase;
 use framebuffer::FramebufferDraw;
+use framebuffer::FramebufferIO;
 use framebuffer::FramebufferRefresh;
 
 use input::gpio::GPIOEvent;
