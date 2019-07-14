@@ -1,6 +1,9 @@
 use framebuffer::cgmath::Point2;
 use framebuffer::common;
 use framebuffer::PixelCanvas;
+
+/// MaskCanvas represents any canvas which can be masked.
+/// There is a blanket impl for all PixelCanvases.
 pub trait MaskCanvas<'a, C, F>
 where
     C: PixelCanvas,
@@ -9,6 +12,7 @@ where
     fn mask(&'a mut self, mask: F) -> MaskedCanvas<'a, C, F>;
 }
 
+/// A masked canvas, implements PixelCanvas itself.
 pub struct MaskedCanvas<'a, C, F>
 where
     C: PixelCanvas,

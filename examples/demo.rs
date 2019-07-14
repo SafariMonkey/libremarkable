@@ -8,10 +8,10 @@ extern crate env_logger;
 
 #[macro_use]
 extern crate libremarkable;
+use libremarkable::framebuffer::canvas::mask::MaskCanvas;
 use libremarkable::framebuffer::cgmath;
 use libremarkable::framebuffer::cgmath::EuclideanSpace;
 use libremarkable::framebuffer::common::*;
-use libremarkable::framebuffer::filter::MaskCanvas;
 use libremarkable::framebuffer::refresh::PartialRefreshMode;
 use libremarkable::framebuffer::storage;
 use libremarkable::framebuffer::{FramebufferDraw, FramebufferIO, FramebufferRefresh};
