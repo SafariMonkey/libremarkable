@@ -1,6 +1,6 @@
 use framebuffer::cgmath::Point2;
 use framebuffer::common;
-use framebuffer::PixelCanvas;
+use framebuffer::{PixelCanvas, Region};
 
 /// MaskCanvas represents any canvas which can be masked.
 /// There is a blanket impl for all PixelCanvases.
@@ -43,6 +43,18 @@ where
 {
     fn mask(&'a mut self, mask: F) -> MaskedCanvas<'a, C, F> {
         MaskedCanvas { source: self, mask }
+    }
+}
+
+/// Implement Region for MaskedCanvas<C>
+/// if the C implements it
+impl<'a, C, F> Region for MaskedCanvas<'a, C, F>
+where
+    C: PixelCanvas + Region,
+    F: FnMut(Point2<i32>) -> bool,
+{
+    fn get_region(&self) -> common::mxcfb_rect {
+        self.source.get_region()
     }
 }
 
