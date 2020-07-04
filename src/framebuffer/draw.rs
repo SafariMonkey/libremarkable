@@ -23,7 +23,7 @@ impl<'a> DefaultFont<'a> for Framebuffer<'a> {
     }
 }
 
-impl<'a, T: FramebufferIO + DefaultFont<'a>> framebuffer::FramebufferDraw for T {
+impl<'a, T: FramebufferIO> framebuffer::FramebufferDraw for T {
     fn draw_image(&mut self, img: &RgbImage, pos: Point2<i32>) -> mxcfb_rect {
         for (x, y, pixel) in img.enumerate_pixels() {
             let pixel_pos = pos + vec2(x as i32, y as i32);
@@ -144,6 +144,41 @@ impl<'a, T: FramebufferIO + DefaultFont<'a>> framebuffer::FramebufferDraw for T 
         )
     }
 
+    fn draw_rect(&mut self, pos: Point2<i32>, size: Vector2<u32>, border_px: u32, c: color) {
+        let top_left = pos;
+        let top_right = pos + vec2(size.x as i32, 0);
+        let bottom_left = pos + vec2(0, size.y as i32);
+        let bottom_right = pos + size.cast().unwrap();
+
+        // top horizontal
+        self.draw_line(top_left, top_right, border_px, c);
+
+        // left vertical
+        self.draw_line(top_left, bottom_left, border_px, c);
+
+        // bottom horizontal
+        self.draw_line(top_right, bottom_right, border_px, c);
+
+        // right vertical
+        self.draw_line(bottom_left, bottom_right, border_px, c);
+    }
+
+    fn fill_rect(&mut self, pos: Point2<i32>, size: Vector2<u32>, c: color) {
+        for ypos in pos.y..pos.y + size.y as i32 {
+            for xpos in pos.x..pos.x + size.x as i32 {
+                self.write_pixel(
+                    Point2 {
+                        x: xpos as i32,
+                        y: ypos as i32,
+                    },
+                    c,
+                );
+            }
+        }
+    }
+}
+
+impl<'a, T: FramebufferIO + DefaultFont<'a>> framebuffer::FramebufferDrawText for T {
     fn draw_text(
         &mut self,
         pos: Point2<f32>,
@@ -216,39 +251,6 @@ impl<'a, T: FramebufferIO + DefaultFont<'a>> framebuffer::FramebufferDraw for T 
             left: min_x as u32,
             height: (max_y - min_y) as u32,
             width: (max_x - min_x) as u32,
-        }
-    }
-
-    fn draw_rect(&mut self, pos: Point2<i32>, size: Vector2<u32>, border_px: u32, c: color) {
-        let top_left = pos;
-        let top_right = pos + vec2(size.x as i32, 0);
-        let bottom_left = pos + vec2(0, size.y as i32);
-        let bottom_right = pos + size.cast().unwrap();
-
-        // top horizontal
-        self.draw_line(top_left, top_right, border_px, c);
-
-        // left vertical
-        self.draw_line(top_left, bottom_left, border_px, c);
-
-        // bottom horizontal
-        self.draw_line(top_right, bottom_right, border_px, c);
-
-        // right vertical
-        self.draw_line(bottom_left, bottom_right, border_px, c);
-    }
-
-    fn fill_rect(&mut self, pos: Point2<i32>, size: Vector2<u32>, c: color) {
-        for ypos in pos.y..pos.y + size.y as i32 {
-            for xpos in pos.x..pos.x + size.x as i32 {
-                self.write_pixel(
-                    Point2 {
-                        x: xpos as i32,
-                        y: ypos as i32,
-                    },
-                    c,
-                );
-            }
         }
     }
 }

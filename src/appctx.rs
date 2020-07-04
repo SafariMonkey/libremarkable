@@ -24,6 +24,7 @@ use crate::framebuffer::core;
 use crate::framebuffer::refresh::PartialRefreshMode;
 use crate::framebuffer::FramebufferBase;
 use crate::framebuffer::FramebufferDraw;
+use crate::framebuffer::FramebufferDrawText;
 use crate::framebuffer::FramebufferIO;
 use crate::framebuffer::FramebufferRefresh;
 

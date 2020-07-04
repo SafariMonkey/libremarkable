@@ -87,15 +87,6 @@ pub trait FramebufferDraw {
         samples: i32,
         v: common::color,
     ) -> common::mxcfb_rect;
-    /// Draws `text` at `pos` with `color` using scale `size`
-    fn draw_text(
-        &mut self,
-        pos: cgmath::Point2<f32>,
-        text: String,
-        size: f32,
-        col: common::color,
-        dryrun: bool,
-    ) -> common::mxcfb_rect;
     /// Draws a 1px border rectangle of size `size` at `pos` with `border_px` border thickness
     fn draw_rect(
         &mut self,
@@ -106,6 +97,18 @@ pub trait FramebufferDraw {
     );
     /// Fills rectangle of size `size` at `pos`
     fn fill_rect(&mut self, pos: cgmath::Point2<i32>, size: cgmath::Vector2<u32>, c: common::color);
+}
+
+pub trait FramebufferDrawText {
+    /// Draws `text` at `pos` with `color` using scale `size`
+    fn draw_text(
+        &mut self,
+        pos: cgmath::Point2<f32>,
+        text: String,
+        size: f32,
+        col: common::color,
+        dryrun: bool,
+    ) -> common::mxcfb_rect;
 }
 
 pub mod core;

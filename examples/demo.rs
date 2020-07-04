@@ -3,7 +3,9 @@ use libremarkable::framebuffer::cgmath::EuclideanSpace;
 use libremarkable::framebuffer::common::*;
 use libremarkable::framebuffer::refresh::PartialRefreshMode;
 use libremarkable::framebuffer::storage;
-use libremarkable::framebuffer::{FramebufferDraw, FramebufferIO, FramebufferRefresh};
+use libremarkable::framebuffer::{
+    FramebufferDraw, FramebufferDrawText, FramebufferIO, FramebufferRefresh,
+};
 use libremarkable::image::GenericImage;
 use libremarkable::input::{gpio, multitouch, wacom, InputDevice};
 use libremarkable::ui_extensions::element::{
