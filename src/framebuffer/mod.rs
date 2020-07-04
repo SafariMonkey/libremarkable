@@ -27,6 +27,8 @@ pub trait FramebufferIO {
         rect: common::mxcfb_rect,
         data: &[u8],
     ) -> Result<u32, &'static str>;
+    /// Clears the framebuffer however does not perform a refresh
+    fn clear(&mut self);
 }
 
 mod graphics;
@@ -104,8 +106,6 @@ pub trait FramebufferDraw {
     );
     /// Fills rectangle of size `size` at `pos`
     fn fill_rect(&mut self, pos: cgmath::Point2<i32>, size: cgmath::Vector2<u32>, c: common::color);
-    /// Clears the framebuffer however does not perform a refresh
-    fn clear(&mut self);
 }
 
 pub mod core;

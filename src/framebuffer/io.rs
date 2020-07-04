@@ -136,4 +136,16 @@ impl<'a> framebuffer::FramebufferIO for framebuffer::core::Framebuffer<'a> {
         }
         Ok(written)
     }
+
+    fn clear(&mut self) {
+        let h = self.var_screen_info.yres as usize;
+        let line_length = self.fix_screen_info.line_length as usize;
+        unsafe {
+            libc::memset(
+                self.frame.data() as *mut libc::c_void,
+                std::i32::MAX,
+                line_length * h,
+            );
+        }
+    }
 }

@@ -1,14 +1,29 @@
 use image::RgbImage;
-use rusttype::{point, Scale};
+use rusttype::{point, Font, Scale};
 
 use crate::framebuffer;
 use crate::framebuffer::cgmath::*;
 use crate::framebuffer::common::*;
-use crate::framebuffer::core;
+use crate::framebuffer::core::Framebuffer;
 use crate::framebuffer::graphics;
 use crate::framebuffer::FramebufferIO;
 
-impl<'a> framebuffer::FramebufferDraw for core::Framebuffer<'a> {
+pub trait DefaultFont<'a> {
+    fn get_default_font<'temp>(&'temp self) -> &'temp Font<'a>
+    where
+        'a: 'temp;
+}
+
+impl<'a> DefaultFont<'a> for Framebuffer<'a> {
+    fn get_default_font<'temp>(&'temp self) -> &'temp Font<'a>
+    where
+        'a: 'temp,
+    {
+        &self.default_font
+    }
+}
+
+impl<'a, T: FramebufferIO + DefaultFont<'a>> framebuffer::FramebufferDraw for T {
     fn draw_image(&mut self, img: &RgbImage, pos: Point2<i32>) -> mxcfb_rect {
         for (x, y, pixel) in img.enumerate_pixels() {
             let pixel_pos = pos + vec2(x as i32, y as i32);
@@ -145,7 +160,7 @@ impl<'a> framebuffer::FramebufferDraw for core::Framebuffer<'a> {
         // The starting positioning of the glyphs (top left corner)
         let start = point(pos.x, pos.y);
 
-        let dfont = &mut self.default_font.clone();
+        let dfont = self.get_default_font().clone();
 
         let mut min_y = pos.y.floor().max(0.0) as u32;
         let mut max_y = pos.y.ceil().max(0.0) as u32;
@@ -236,16 +251,15 @@ impl<'a> framebuffer::FramebufferDraw for core::Framebuffer<'a> {
             }
         }
     }
+}
 
-    fn clear(&mut self) {
-        let h = self.var_screen_info.yres as usize;
-        let line_length = self.fix_screen_info.line_length as usize;
-        unsafe {
-            libc::memset(
-                self.frame.data() as *mut libc::c_void,
-                std::i32::MAX,
-                line_length * h,
-            );
-        }
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn __assert_framebuffer_impls_framebuffer_draw()
+    where
+        Framebuffer<'static>: framebuffer::FramebufferDraw,
+    {
     }
 }
