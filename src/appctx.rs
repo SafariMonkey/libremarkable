@@ -71,7 +71,7 @@ impl<'a> ApplicationContext<'a> {
     /// Perhaps this is bad practice but we know that the ApplicationContext,
     /// just like the Framebuffer will have a static lifetime. We are doing this
     /// so that we can have the event handlers call into the ApplicationContext.
-    pub fn upgrade_ref(&mut self) -> &'static mut ApplicationContext<'static> {
+    pub fn upgrade_ref(&mut self) -> &mut ApplicationContext<'static> {
         unsafe { std::mem::transmute(self) }
     }
 
@@ -283,10 +283,10 @@ impl<'a> ApplicationContext<'a> {
     }
 
     pub fn draw_element(&mut self, name: &str) -> bool {
-        let appref = self.upgrade_ref();
         match self.ui_elements.get(name) {
             None => false,
             Some(element) => {
+                let element = element.clone();
                 let h = element.read().onclick;
                 let handler = match h {
                     Some(handler) => Some(ActiveRegionHandler {
@@ -295,7 +295,7 @@ impl<'a> ApplicationContext<'a> {
                     }),
                     _ => None,
                 };
-                element.write().draw(appref, &handler);
+                element.write().draw(self.upgrade_ref(), &handler);
                 true
             }
         }
@@ -480,8 +480,6 @@ impl<'a> ApplicationContext<'a> {
         activate_multitouch: bool,
         activate_buttons: bool,
     ) {
-        let appref = self.upgrade_ref();
-
         if activate_wacom {
             self.activate_input_device(InputDevice::Wacom);
         }
@@ -501,7 +499,7 @@ impl<'a> ApplicationContext<'a> {
                 Err(e) => println!("Error in input event consumer: {0}", e),
                 Ok(event) => match event {
                     InputEvent::GPIO { event } => {
-                        (self.on_button)(appref, event);
+                        (self.on_button)(self.upgrade_ref(), event);
                     }
                     InputEvent::MultitouchEvent { event } => {
                         // Check for and notify clickable active regions for multitouch events
@@ -513,15 +511,16 @@ impl<'a> ApplicationContext<'a> {
                                 if let Some((h, _)) =
                                     self.find_active_region(finger.pos.y, finger.pos.x)
                                 {
-                                    (h.handler)(appref, h.element.clone());
+                                    let h = h.clone();
+                                    (h.handler)(self.upgrade_ref(), h.element.clone());
                                 }
                                 last_active_region_gesture_id = gseq;
                             }
                         }
-                        (self.on_touch)(appref, event);
+                        (self.on_touch)(self.upgrade_ref(), event);
                     }
                     InputEvent::WacomEvent { event } => {
-                        (self.on_wacom)(appref, event);
+                        (self.on_wacom)(self.upgrade_ref(), event);
                     }
                     _ => {}
                 },
@@ -530,15 +529,13 @@ impl<'a> ApplicationContext<'a> {
     }
 
     pub fn handle_event(&mut self, event: InputEvent) {
-        let appref = self.upgrade_ref();
-
         // Now we consume the input events
         self.running.store(true, Ordering::Relaxed);
 
         if self.running.load(Ordering::Relaxed) {
             match event {
                 InputEvent::GPIO { event } => {
-                    (self.on_button)(appref, event);
+                    (self.on_button)(self.upgrade_ref(), event);
                 }
                 InputEvent::MultitouchEvent { event } => {
                     // Check for and notify clickable active regions for multitouch events
@@ -546,13 +543,14 @@ impl<'a> ApplicationContext<'a> {
                         event
                     {
                         if let Some((h, _)) = self.find_active_region(finger.pos.y, finger.pos.x) {
-                            (h.handler)(appref, h.element.clone());
+                            let h = h.clone();
+                            (h.handler)(self.upgrade_ref(), h.element.clone());
                         }
                     }
-                    (self.on_touch)(appref, event);
+                    (self.on_touch)(self.upgrade_ref(), event);
                 }
                 InputEvent::WacomEvent { event } => {
-                    (self.on_wacom)(appref, event);
+                    (self.on_wacom)(self.upgrade_ref(), event);
                 }
                 _ => {}
             }
